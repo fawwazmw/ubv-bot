@@ -49,7 +49,7 @@ function buildFallbackStatus(promoMessage) {
 
 export async function fetchServerStatus(
   apiUrl,
-  { universeId, cacheMs, promoMessage } = {}
+  { universeId, cacheMs, promoMessage, groupPresence } = {}
 ) {
   if (apiUrl) {
     try {
@@ -76,6 +76,7 @@ export async function fetchServerStatus(
     return await fetchRobloxServerStatus(universeId, {
       cacheMs,
       promoMessage,
+      groupPresence,
     });
   } catch (err) {
     console.error("❌ Gagal mengambil data Roblox:", describeAxiosError(err));

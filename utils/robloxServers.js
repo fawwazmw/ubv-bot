@@ -1,4 +1,5 @@
 import axios from "axios";
+import { fetchGroupStaffPresence } from "./robloxGroupPresence.js";
 
 const DEFAULT_CACHE_MS = 30000;
 const DEFAULT_PROMO =
@@ -24,7 +25,7 @@ function isCacheValid(entry, cacheMs) {
 
 export async function fetchRobloxServerStatus(
   universeId,
-  { cacheMs = DEFAULT_CACHE_MS, promoMessage } = {}
+  { cacheMs = DEFAULT_CACHE_MS, promoMessage, groupPresence } = {}
 ) {
   if (!universeId) {
     throw new Error("ROBLOX_UNIVERSE_ID belum dikonfigurasi.");
@@ -70,6 +71,22 @@ export async function fetchRobloxServerStatus(
         promo: "Belum ada server publik aktif saat ini.",
         degraded: true,
       };
+
+  if (groupPresence?.groupId) {
+    try {
+      const presence = await fetchGroupStaffPresence({
+        ...groupPresence,
+        universeId: groupPresence.universeId ?? universeId,
+      });
+      status.owners = Number(presence?.ownersInGame ?? 0);
+      status.admins = Number(presence?.adminsInGame ?? 0);
+    } catch (err) {
+      console.warn(
+        "⚠️ Gagal mengambil data presence Roblox:",
+        err?.message ?? err
+      );
+    }
+  }
 
   setCacheEntry(universeId, status);
   return status;

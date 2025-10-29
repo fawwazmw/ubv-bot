@@ -52,6 +52,12 @@
 - `statusApiServer.js`: GET endpoint never calls `fetchRobloxServerStatus`
 - Result: **NO MORE 429 errors**
 
+### 7. **Optional Roblox API presence tracking**
+
+- Bot can now call the public Roblox API directly to detect Owner/Admin staff who are in-game
+- Set these env vars to enable it: `ROBLOX_GROUP_ID`, `ROBLOX_PLACE_ID`, `ROBLOX_OWNER_ROLE_NAME`, `ROBLOX_ADMIN_ROLE_NAME`, `ROBLOX_PRESENCE_CACHE_MS`
+- Counts automatically populate the Discord embed (`owners`/`admins`) without needing the ServerScriptService webhook push
+
 ---
 
 ## 🔧 Configuration
