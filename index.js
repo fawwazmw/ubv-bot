@@ -1,18 +1,13 @@
 import "dotenv/config";
 import { Client, GatewayIntentBits, REST, Routes } from "discord.js";
 import { config } from "./src/config/env.js";
-import { StatusManager } from "./src/status/statusManager.js";
-import { startStatusApiServer } from "./src/status/statusApiServer.js";
 import { buildCommandRegistry } from "./src/discord/commandRegistry.js";
 import { createHelpSelectHandler } from "./src/discord/helpSelectHandler.js";
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-const statusManager = new StatusManager(config);
-await statusManager.init();
 
 const { commands, registry } = buildCommandRegistry({
   config,
-  statusManager,
 });
 
 async function registerSlashCommands() {
@@ -28,14 +23,6 @@ async function registerSlashCommands() {
   );
   console.log("✅ Slash command terdaftar.");
 }
-
-await startStatusApiServer({
-  universeId: config.roblox.universeId,
-  port: config.statusApi.port,
-  promoMessage: config.status.promoMessage,
-  secret: config.statusApi.secret,
-  storagePath: config.paths.lastPushedStatus,
-});
 
 const handleHelpSelect = createHelpSelectHandler({
   branding: config.branding,
@@ -58,37 +45,6 @@ client.once("ready", async () => {
     await registerSlashCommands();
   } catch (error) {
     console.error("❌ Gagal mendaftarkan slash commands:", error?.message ?? error);
-  }
-
-  let statusChannel = null;
-  try {
-    statusChannel = await statusManager.resolveChannel(client);
-  } catch (error) {
-    console.error("❌ STATUS_CHANNEL_ID tidak valid:", error?.message ?? error);
-    process.exit(1);
-  }
-
-  try {
-    await statusManager.refresh(statusChannel, { force: true });
-  } catch (error) {
-    console.error("❌ Gagal mengirim status awal:", error?.message ?? error);
-  }
-
-  if (config.status.updateIntervalMs > 0) {
-    setInterval(() => {
-      statusManager
-        .refresh(statusChannel)
-        .catch((error) =>
-          console.error(
-            "❌ Gagal memperbarui status:",
-            error?.message ?? error
-          )
-        );
-    }, config.status.updateIntervalMs);
-
-    console.log(
-      `🔁 Auto-update setiap ${config.status.updateIntervalMs / 60000} menit.`
-    );
   }
 });
 

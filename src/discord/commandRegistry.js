@@ -1,10 +1,8 @@
 import { createHelpCommand } from "./commands/helpCommand.js";
-import { createStatusCommand } from "./commands/statusCommand.js";
 import { createBirthdayCommands } from "../features/birthdays/birthdayCommands.js";
 
-export function buildCommandRegistry({ config, statusManager }) {
+export function buildCommandRegistry({ config }) {
   const commands = [
-    createStatusCommand({ statusManager }),
     createHelpCommand({
       branding: config.branding,
       discord: config.discord,

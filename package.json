@@ -5,7 +5,13 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon --watch . --ext js,json --exec node index.js"
+    "dev": "nodemon --watch . --ext js,json --exec node index.js",
+    "build": "echo 'No build needed - pure JavaScript project'",
+    "deploy": "npm install --production",
+    "clean": "rm -rf node_modules",
+    "clean:data": "rm -f data/*.json",
+    "reinstall": "npm run clean && npm install",
+    "test": "node index.js --dry-run 2>&1 | grep -q 'Logged in' && echo 'Bot connection test passed' || echo 'Bot connection test failed'"
   },
   "keywords": [],
   "author": "",
