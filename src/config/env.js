@@ -40,7 +40,7 @@ export function loadConfig(env = process.env) {
     },
     branding: {
       botName: env.BOT_BRAND ?? "UBV Bot",
-      tagline: env.BRAND_TAGLINE ?? "/help",
+      tagline: "Universitas Brawijaya Voice",
       imageUrl: env.IMAGE_URL ?? null,
     },
     paths: {

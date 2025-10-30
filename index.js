@@ -42,7 +42,7 @@ client.once("clientReady", async () => {
   client.user.setPresence({
     activities: [
       {
-        name: config.branding.tagline || "/help",
+        name: config.branding.tagline || "Universitas Brawijaya Voice",
         type: 2, // Listening
       },
     ],
