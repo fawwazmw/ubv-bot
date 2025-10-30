@@ -1,8 +1,16 @@
 import "dotenv/config";
-import { Client, GatewayIntentBits, REST, Routes } from "discord.js";
+import express from "express";
+import { Client, GatewayIntentBits, REST, Routes, MessageFlags } from "discord.js";
 import { config } from "./src/config/env.js";
 import { buildCommandRegistry } from "./src/discord/commandRegistry.js";
 import { createHelpSelectHandler } from "./src/discord/helpSelectHandler.js";
+
+// Health check server for deployment platforms (Render, Railway, etc)
+const PORT = process.env.PORT || 3000;
+const app = express();
+app.get("/", (req, res) => res.send("UBV Bot is running!"));
+app.get("/health", (req, res) => res.json({ status: "ok", uptime: process.uptime() }));
+app.listen(PORT, () => console.log(`🌐 Health check server running on port ${PORT}`));
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
@@ -29,7 +37,7 @@ const handleHelpSelect = createHelpSelectHandler({
   discord: config.discord,
 });
 
-client.once("ready", async () => {
+client.once("clientReady", async () => {
   console.log(`🤖 Logged in sebagai ${client.user.tag}`);
   client.user.setPresence({
     activities: [
@@ -65,7 +73,7 @@ client.on("interactionCreate", async (interaction) => {
       } else {
         await interaction.reply({
           content: "Terjadi kesalahan tak terduga.",
-          ephemeral: true,
+          flags: [MessageFlags.Ephemeral],
         });
       }
     }
