@@ -3,12 +3,14 @@
 ## 🚀 Quick Start Commands
 
 ### Start Bot
+
 ```bash
 cd /home/fawwazmw/Documents/fwzdev/ubv-bot
 node index.js
 ```
 
 ### Stop Bot
+
 Press `Ctrl + C` in the terminal
 
 ---
@@ -16,6 +18,7 @@ Press `Ctrl + C` in the terminal
 ## 📝 Environment Setup
 
 ### Required Environment Variables
+
 Create `.env` file in project root:
 
 ```env
@@ -25,9 +28,10 @@ GUILD_ID=your-discord-server-id
 ```
 
 ### Optional Branding Variables
+
 ```env
 BOT_BRAND=UBV Bot
-BRAND_TAGLINE=/help
+BRAND_TAGLINE=Universitas Brawijaya Voice
 IMAGE_URL=https://example.com/banner.jpg
 ```
 
@@ -36,11 +40,13 @@ IMAGE_URL=https://example.com/banner.jpg
 ## 🎯 Available Discord Commands
 
 ### /help
+
 - Displays help menu with all available commands
 - Interactive dropdown menu for detailed information
 - Usage: Simply type `/help` in Discord
 
 ### Birthday Commands
+
 Check `/help` in Discord for full list of birthday-related commands
 
 ---
@@ -48,11 +54,13 @@ Check `/help` in Discord for full list of birthday-related commands
 ## 🔧 Development
 
 ### Install Dependencies
+
 ```bash
 npm install
 ```
 
 ### Project Structure
+
 ```
 ubv-bot/
 ├── index.js              # Main bot file
@@ -70,6 +78,7 @@ ubv-bot/
 ### Adding New Commands
 
 1. Create command file in `src/discord/commands/newCommand.js`:
+
 ```javascript
 export function createNewCommand({ config }) {
   return {
@@ -85,6 +94,7 @@ export function createNewCommand({ config }) {
 ```
 
 2. Import and register in `src/discord/commandRegistry.js`:
+
 ```javascript
 import { createNewCommand } from "./commands/newCommand.js";
 
@@ -105,7 +115,9 @@ export function buildCommandRegistry({ config }) {
 ## 🐛 Debugging
 
 ### Check Bot Status
+
 Expected console output when bot starts:
+
 ```
 🤖 Logged in sebagai YourBot#1234
 ✅ Slash command terdaftar.
@@ -114,17 +126,20 @@ Expected console output when bot starts:
 ### Common Issues
 
 #### Bot won't start
+
 - Check `.env` file exists with correct values
 - Verify `DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID` are set
 - Check Node.js version: `node --version` (requires v18+)
 
 #### Commands not appearing in Discord
+
 - Wait 1-2 minutes for Discord to sync
 - Verify `GUILD_ID` matches your server
 - Try restarting Discord client
 - Check bot has been invited with `applications.commands` scope
 
 #### Bot shows offline
+
 - Verify `DISCORD_TOKEN` is valid (not regenerated)
 - Check bot has `GUILDS` intent enabled in Discord Developer Portal
 - Review console for error messages
@@ -169,12 +184,14 @@ Expected console output when bot starts:
 ## 🧪 Testing Checklist
 
 ### Initial Setup
+
 - [ ] `.env` file created with required variables
 - [ ] `npm install` completed successfully
 - [ ] Bot invited to Discord server
 - [ ] Bot has necessary permissions
 
 ### Bot Functionality
+
 - [ ] Bot starts without errors
 - [ ] Bot shows as online in Discord
 - [ ] `/help` command works
@@ -186,9 +203,11 @@ Expected console output when bot starts:
 ## 📞 Getting Help
 
 ### Check Logs
+
 Monitor console output for error messages and status updates
 
 ### Common Solutions
+
 1. **Bot won't connect**: Check token and network
 2. **Commands missing**: Wait for sync or restart Discord
 3. **Permission errors**: Verify bot role permissions
@@ -209,6 +228,7 @@ Monitor console output for error messages and status updates
 ## 🔄 Recent Changes
 
 **Latest Update (2025-10-30)**
+
 - Removed server status monitoring features
 - Removed Roblox game integration
 - Simplified to core Discord bot functionality

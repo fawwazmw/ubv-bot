@@ -40,8 +40,13 @@ export function loadConfig(env = process.env) {
     },
     branding: {
       botName: env.BOT_BRAND ?? "UBV Bot",
-      tagline: "Universitas Brawijaya Voice",
+      tagline: env.BRAND_TAGLINE ?? "Universitas Brawijaya Voice",
       imageUrl: env.IMAGE_URL ?? null,
+    },
+    birthdays: {
+      channelId: env.BIRTHDAY_CHANNEL_ID ?? null,
+      timezone: env.BIRTHDAY_TIMEZONE ?? "Asia/Jakarta",
+      checkTime: env.BIRTHDAY_CHECK_TIME ?? "00:00",
     },
     paths: {
       dataDir,

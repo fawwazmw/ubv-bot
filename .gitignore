@@ -1,2 +1,21 @@
 .env
 node_modules
+
+# Data files (user-generated, should not be committed)
+data/*.json
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# Whitelist: Config files that should be committed
+!data/.gitkeep
+# Uncomment below to commit specific config files:
+# !data/channels_config.json
+# !data/default_settings.json
+
+# Log files
+*.log
+bot.log
+
+# SQLite temporary files
+*.db-journal

@@ -3,7 +3,7 @@ import {
   PermissionsBitField,
 } from "discord.js";
 import { createMentionFetcher } from "../../discord/commandMentions.js";
-import { readJsonSafe, writeJsonSafe } from "../../data/jsonStore.js";
+import { BirthdayStore } from "../../database/birthdayStore.js";
 
 const monthNames = [
   "January",
@@ -19,20 +19,6 @@ const monthNames = [
   "November",
   "December",
 ];
-
-class BirthdayStore {
-  constructor(filePath) {
-    this.filePath = filePath;
-  }
-
-  async load() {
-    return readJsonSafe(this.filePath, {});
-  }
-
-  async save(data) {
-    await writeJsonSafe(this.filePath, data);
-  }
-}
 
 function ordinalSuffix(value) {
   const mod100 = value % 100;
@@ -206,33 +192,46 @@ export function createBirthdayCommands({ filePath, branding, discord }) {
         description: "Remove your saved birthday",
       },
       async execute(interaction) {
-        const db = await store.load();
-        const targetId = interaction.user.id;
-        if (!db[targetId]) {
-          const mentionFetcher = createMentionFetcher(
-            interaction,
-            discord.guildId
-          );
-          const getMention = (name) => mentionFetcher(name);
-          const botImage = resolveBotImage(interaction, branding);
-          const embed = await buildUnknownBirthdayEmbed({
-            interaction,
-            getMention,
-            thumbnail: botImage,
-          });
-          await interaction.reply({ embeds: [embed], ephemeral: false });
-          return;
+        try {
+          // Defer immediately to prevent timeout (within 3 seconds)
+          await interaction.deferReply();
+
+          const db = await store.load();
+          const targetId = interaction.user.id;
+          if (!db[targetId]) {
+            const mentionFetcher = createMentionFetcher(
+              interaction,
+              discord.guildId
+            );
+            const getMention = (name) => mentionFetcher(name);
+            const botImage = resolveBotImage(interaction, branding);
+            const embed = await buildUnknownBirthdayEmbed({
+              interaction,
+              getMention,
+              thumbnail: botImage,
+            });
+            await interaction.editReply({ embeds: [embed] });
+            return;
+          }
+
+          delete db[targetId];
+          await store.save(db);
+
+          const embed = new EmbedBuilder()
+            .setColor(0xffa500)
+            .setDescription(
+              `Duly noted, I will not wish ${interaction.user.toString()}'s birthday anymore.`
+            );
+          await interaction.editReply({ embeds: [embed] });
+        } catch (error) {
+          console.error("Error in forget-birthday command:", error);
+          const errorMessage = "An error occurred. Please try again.";
+          if (interaction.deferred && !interaction.replied) {
+            await interaction.editReply({ content: errorMessage }).catch(() => {});
+          } else if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({ content: errorMessage, ephemeral: true }).catch(() => {});
+          }
         }
-
-        delete db[targetId];
-        await store.save(db);
-
-        const embed = new EmbedBuilder()
-          .setColor(0xffa500)
-          .setDescription(
-            `Duly noted, I will not wish ${interaction.user.toString()}'s birthday anymore.`
-          );
-        await interaction.reply({ embeds: [embed], ephemeral: false });
       },
     },
     {
@@ -249,45 +248,57 @@ export function createBirthdayCommands({ filePath, branding, discord }) {
         ],
       },
       async execute(interaction) {
-        const dateStr = interaction.options.getString("date");
-        const parsed = validateAndNormalizeDate(String(dateStr));
-        if (!parsed) {
-          const embed = new EmbedBuilder()
-            .setColor(0xed4245)
-            .setDescription(
-              "Invalid date format. Use `YYYY-MM-DD` (year optional) or `MM-DD`. Examples: `1993-12-16`, `10-12`."
-            );
-          await interaction.reply({ embeds: [embed], ephemeral: true });
-          return;
+        try {
+          // Defer immediately to prevent timeout (within 3 seconds)
+          await interaction.deferReply();
+
+          const dateStr = interaction.options.getString("date");
+          const parsed = validateAndNormalizeDate(String(dateStr));
+          if (!parsed) {
+            const embed = new EmbedBuilder()
+              .setColor(0xed4245)
+              .setDescription(
+                "Invalid date format. Use `YYYY-MM-DD` (year optional) or `MM-DD`. Examples: `1993-12-16`, `10-12`."
+              );
+            await interaction.editReply({ embeds: [embed] });
+            return;
+          }
+
+          const db = await store.load();
+          db[interaction.user.id] = { date: parsed.normalized };
+          await store.save(db);
+
+          const occurrence = computeNextOccurrence(parsed);
+          if (occurrence) {
+            const description =
+              occurrence.daysUntil === 0
+                ? `Duly noted, it's ${interaction.user.toString()}'s ${
+                    occurrence.ageText ? `${occurrence.ageText} ` : ""
+                  }birthday today! 🎉`
+                : `Duly noted, I'll wish ${interaction.user.toString()}'s ${
+                    occurrence.ageText ? `${occurrence.ageText} ` : ""
+                  }birthday in ${occurrence.daysUntil} days, on ${
+                    occurrence.formatted
+                  } 🕯️`;
+            const embed = new EmbedBuilder()
+              .setColor(0xffa500)
+              .setDescription(description);
+            await interaction.editReply({ embeds: [embed] });
+            return;
+          }
+
+          await interaction.editReply({
+            content: `Saved your birthday as ${parsed.normalized}.`,
+          });
+        } catch (error) {
+          console.error("Error in remember-birthday command:", error);
+          const errorMessage = "An error occurred while saving your birthday. Please try again.";
+          if (interaction.deferred && !interaction.replied) {
+            await interaction.editReply({ content: errorMessage }).catch(() => {});
+          } else if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({ content: errorMessage, ephemeral: true }).catch(() => {});
+          }
         }
-
-        const db = await store.load();
-        db[interaction.user.id] = { date: parsed.normalized };
-        await store.save(db);
-
-        const occurrence = computeNextOccurrence(parsed);
-        if (occurrence) {
-          const description =
-            occurrence.daysUntil === 0
-              ? `Duly noted, it's ${interaction.user.toString()}'s ${
-                  occurrence.ageText ? `${occurrence.ageText} ` : ""
-                }birthday today! 🎉`
-              : `Duly noted, I'll wish ${interaction.user.toString()}'s ${
-                  occurrence.ageText ? `${occurrence.ageText} ` : ""
-                }birthday in ${occurrence.daysUntil} days, on ${
-                  occurrence.formatted
-                } 🕯️`;
-          const embed = new EmbedBuilder()
-            .setColor(0xffa500)
-            .setDescription(description);
-          await interaction.reply({ embeds: [embed], ephemeral: false });
-          return;
-        }
-
-        await interaction.reply({
-          content: `Saved your birthday as ${parsed.normalized}.`,
-          ephemeral: false,
-        });
       },
     },
     {
@@ -310,49 +321,60 @@ export function createBirthdayCommands({ filePath, branding, discord }) {
         ],
       },
       async execute(interaction) {
-        const hasPermissions =
-          interaction.member?.permissions?.has?.(
-            PermissionsBitField.Flags.ManageGuild
-          ) || interaction.memberPermissions?.has?.(
-            PermissionsBitField.Flags.ManageGuild
-          );
-        if (!hasPermissions) {
-          const embed = new EmbedBuilder()
-            .setColor(0xed4245)
-            .setDescription("Missing Permissions");
-          await interaction.reply({ embeds: [embed], ephemeral: true });
-          return;
-        }
+        try {
+          // Defer immediately to prevent timeout (within 3 seconds)
+          await interaction.deferReply({ ephemeral: true });
 
-        const dateStr = interaction.options.getString("date");
-        const member = interaction.options.getUser("member");
-        if (!member) {
-          await interaction.reply({
-            content: "Member not found.",
-            ephemeral: true,
-          });
-          return;
-        }
-
-        const parsed = validateAndNormalizeDate(String(dateStr));
-        if (!parsed) {
-          const embed = new EmbedBuilder()
-            .setColor(0xed4245)
-            .setDescription(
-              "Invalid date format. Use `YYYY-MM-DD` (year optional) or `MM-DD`. Examples: `1993-12-16`, `10-12`."
+          const hasPermissions =
+            interaction.member?.permissions?.has?.(
+              PermissionsBitField.Flags.ManageGuild
+            ) || interaction.memberPermissions?.has?.(
+              PermissionsBitField.Flags.ManageGuild
             );
-          await interaction.reply({ embeds: [embed], ephemeral: true });
-          return;
+          if (!hasPermissions) {
+            const embed = new EmbedBuilder()
+              .setColor(0xed4245)
+              .setDescription("Missing Permissions");
+            await interaction.editReply({ embeds: [embed] });
+            return;
+          }
+
+          const dateStr = interaction.options.getString("date");
+          const member = interaction.options.getUser("member");
+          if (!member) {
+            await interaction.editReply({
+              content: "Member not found.",
+            });
+            return;
+          }
+
+          const parsed = validateAndNormalizeDate(String(dateStr));
+          if (!parsed) {
+            const embed = new EmbedBuilder()
+              .setColor(0xed4245)
+              .setDescription(
+                "Invalid date format. Use `YYYY-MM-DD` (year optional) or `MM-DD`. Examples: `1993-12-16`, `10-12`."
+              );
+            await interaction.editReply({ embeds: [embed] });
+            return;
+          }
+
+          const db = await store.load();
+          db[member.id] = { date: parsed.normalized };
+          await store.save(db);
+
+          await interaction.editReply({
+            content: `Set ${member.toString()}'s birthday to ${parsed.normalized}.`,
+          });
+        } catch (error) {
+          console.error("Error in set-user-birthday command:", error);
+          const errorMessage = "An error occurred. Please try again.";
+          if (interaction.deferred && !interaction.replied) {
+            await interaction.editReply({ content: errorMessage }).catch(() => {});
+          } else if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({ content: errorMessage, ephemeral: true }).catch(() => {});
+          }
         }
-
-        const db = await store.load();
-        db[member.id] = { date: parsed.normalized };
-        await store.save(db);
-
-        await interaction.reply({
-          content: `Set ${member.toString()}'s birthday to ${parsed.normalized}.`,
-          ephemeral: true,
-        });
       },
     },
     {
@@ -369,67 +391,78 @@ export function createBirthdayCommands({ filePath, branding, discord }) {
         ],
       },
       async execute(interaction) {
-        const member = interaction.options.getUser("member") || interaction.user;
-        const db = await store.load();
-        const record = db[member.id];
-        if (!record) {
-          const mentionFetcher = createMentionFetcher(
-            interaction,
-            discord.guildId
-          );
-          const embed = new EmbedBuilder()
-            .setColor(0xed4245)
-            .setDescription(`I don't know ${member.toString()}'s birthday yet.`)
-            .addFields({
-              name: "How to set a birthday",
-              value: `${await mentionFetcher(
-                "remember-birthday"
-              )} <date> atau ${await mentionFetcher(
-                "set-user-birthday"
-              )} <date> <@member>`,
-            })
-            .addFields({
-              name: "Examples",
-              value:
-                "• `/remember-birthday 10-12`\n• `/remember-birthday 1993-12-16`\n• `/set-user-birthday 1994-04-15 @Someone`",
+        try {
+          // Defer immediately to prevent timeout (within 3 seconds)
+          await interaction.deferReply();
+
+          const member = interaction.options.getUser("member") || interaction.user;
+          const db = await store.load();
+          const record = db[member.id];
+          if (!record) {
+            const mentionFetcher = createMentionFetcher(
+              interaction,
+              discord.guildId
+            );
+            const embed = new EmbedBuilder()
+              .setColor(0xed4245)
+              .setDescription(`I don't know ${member.toString()}'s birthday yet.`)
+              .addFields({
+                name: "How to set a birthday",
+                value: `${await mentionFetcher(
+                  "remember-birthday"
+                )} <date> atau ${await mentionFetcher(
+                  "set-user-birthday"
+                )} <date> <@member>`,
+              })
+              .addFields({
+                name: "Examples",
+                value:
+                  "• `/remember-birthday 10-12`\n• `/remember-birthday 1993-12-16`\n• `/set-user-birthday 1994-04-15 @Someone`",
+              });
+            await interaction.editReply({ embeds: [embed] });
+            return;
+          }
+
+          const parsed = validateAndNormalizeDate(String(record.date));
+          if (!parsed) {
+            await interaction.editReply({
+              content: `${member.username}'s birthday is ${record.date}`,
             });
-          await interaction.reply({ embeds: [embed], ephemeral: false });
-          return;
+            return;
+          }
+
+          const occurrence = computeNextOccurrence(parsed);
+          if (!occurrence) {
+            await interaction.editReply({
+              content: `${member.username}'s birthday is ${record.date}`,
+            });
+            return;
+          }
+
+          const description =
+            occurrence.daysUntil === 0
+              ? `${member.toString()}'s ${
+                  occurrence.ageText ? `${occurrence.ageText} ` : ""
+                }birthday is today! 🎉`
+              : `${member.toString()}'s ${
+                  occurrence.ageText ? `${occurrence.ageText} ` : ""
+                }birthday is in ${occurrence.daysUntil} days, on ${
+                  occurrence.formatted
+                } 🕯️`;
+
+          const embed = new EmbedBuilder()
+            .setColor(0xffa500)
+            .setDescription(description);
+          await interaction.editReply({ embeds: [embed] });
+        } catch (error) {
+          console.error("Error in birthday command:", error);
+          const errorMessage = "An error occurred. Please try again.";
+          if (interaction.deferred && !interaction.replied) {
+            await interaction.editReply({ content: errorMessage }).catch(() => {});
+          } else if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({ content: errorMessage, ephemeral: true }).catch(() => {});
+          }
         }
-
-        const parsed = validateAndNormalizeDate(String(record.date));
-        if (!parsed) {
-          await interaction.reply({
-            content: `${member.username}'s birthday is ${record.date}`,
-            ephemeral: false,
-          });
-          return;
-        }
-
-        const occurrence = computeNextOccurrence(parsed);
-        if (!occurrence) {
-          await interaction.reply({
-            content: `${member.username}'s birthday is ${record.date}`,
-            ephemeral: false,
-          });
-          return;
-        }
-
-        const description =
-          occurrence.daysUntil === 0
-            ? `${member.toString()}'s ${
-                occurrence.ageText ? `${occurrence.ageText} ` : ""
-              }birthday is today! 🎉`
-            : `${member.toString()}'s ${
-                occurrence.ageText ? `${occurrence.ageText} ` : ""
-              }birthday is in ${occurrence.daysUntil} days, on ${
-                occurrence.formatted
-              } 🕯️`;
-
-        const embed = new EmbedBuilder()
-          .setColor(0xffa500)
-          .setDescription(description);
-        await interaction.reply({ embeds: [embed], ephemeral: false });
       },
     },
     {
@@ -438,88 +471,85 @@ export function createBirthdayCommands({ filePath, branding, discord }) {
         description: "List upcoming birthdays (up to 10)",
       },
       async execute(interaction) {
-        const db = await store.load();
-        const entries = Object.entries(db || {});
-        if (!entries.length) {
-          await interaction.reply({
-            content: "No birthdays known.",
-            ephemeral: true,
-          });
-          return;
-        }
+        try {
+          // Defer immediately to prevent timeout (within 3 seconds)
+          await interaction.deferReply();
 
-        const upcoming = entries
-          .map(([id, value]) => {
-            const parsed = validateAndNormalizeDate(String(value.date));
-            if (!parsed) return null;
-            const occurrence = computeNextOccurrence(parsed);
-            if (!occurrence) return null;
-            return {
-              id,
-              occurrence,
-              heading: `${String(parsed.day).padStart(2, "0")} ${
-                monthNames[parsed.month - 1]
-              } ${occurrence.occurrence.getFullYear()}`,
-            };
-          })
-          .filter(Boolean)
-          .sort(
-            (a, b) => a.occurrence.occurrence.getTime() - b.occurrence.occurrence.getTime()
-          );
-
-        if (!upcoming.length) {
-          await interaction.reply({
-            content: "No valid birthday dates found.",
-            ephemeral: true,
-          });
-          return;
-        }
-
-        const today = new Date();
-        const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
-        const lines = [];
-        let lastHeading = null;
-        let count = 0;
-
-        for (const item of upcoming) {
-          if (count >= 10) break;
-          const occDate = item.occurrence.occurrence;
-          const occKey = `${occDate.getFullYear()}-${occDate.getMonth()}-${occDate.getDate()}`;
-          const heading = occKey === todayKey ? "Today" : item.heading;
-          if (heading !== lastHeading) {
-            if (lines.length) lines.push("");
-            lines.push(heading);
-            lastHeading = heading;
+          const db = await store.load();
+          const entries = Object.entries(db || {});
+          if (!entries.length) {
+            await interaction.editReply({
+              content: "No birthdays known.",
+            });
+            return;
           }
 
-          let displayName = null;
-          try {
-            const guild = interaction.guild;
-            if (guild) {
-              const cached = guild.members.cache.get(item.id);
-              const fetched =
-                cached || (await guild.members.fetch(item.id).catch(() => null));
-              if (fetched) displayName = fetched.displayName;
+          const upcoming = entries
+            .map(([id, value]) => {
+              const parsed = validateAndNormalizeDate(String(value.date));
+              if (!parsed) return null;
+              const occurrence = computeNextOccurrence(parsed);
+              if (!occurrence) return null;
+              return {
+                id,
+                occurrence,
+                heading: `${String(parsed.day).padStart(2, "0")} ${
+                  monthNames[parsed.month - 1]
+                } ${occurrence.occurrence.getFullYear()}`,
+              };
+            })
+            .filter(Boolean)
+            .sort(
+              (a, b) => a.occurrence.occurrence.getTime() - b.occurrence.occurrence.getTime()
+            );
+
+          if (!upcoming.length) {
+            await interaction.editReply({
+              content: "No valid birthday dates found.",
+            });
+            return;
+          }
+
+          const today = new Date();
+          const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+          const lines = [];
+          let lastHeading = null;
+          let count = 0;
+
+          for (const item of upcoming) {
+            if (count >= 10) break;
+            const occDate = item.occurrence.occurrence;
+            const occKey = `${occDate.getFullYear()}-${occDate.getMonth()}-${occDate.getDate()}`;
+            const heading = occKey === todayKey ? "Today" : item.heading;
+            if (heading !== lastHeading) {
+              if (lines.length) lines.push("");
+              lines.push(heading);
+              lastHeading = heading;
             }
-          } catch (error) {
-            displayName = null;
+
+            // Always use mention tag format
+            const mentionTag = `<@${item.id}>`;
+            const ageText = item.occurrence.age
+              ? ` (${item.occurrence.age})`
+              : "";
+            lines.push(`${mentionTag}${ageText}`);
+            count += 1;
           }
 
-          const mentionOrName = displayName
-            ? `${displayName}`
-            : `<@${item.id}>`;
-          const ageText = item.occurrence.age
-            ? ` (${item.occurrence.age})`
-            : "";
-          lines.push(`${mentionOrName}${ageText}`);
-          count += 1;
+          const embed = new EmbedBuilder()
+            .setTitle("Upcoming birthdays")
+            .setColor(0x23272a)
+            .setDescription(lines.join("\n"));
+          await interaction.editReply({ embeds: [embed] });
+        } catch (error) {
+          console.error("Error in next-birthdays command:", error);
+          const errorMessage = "An error occurred. Please try again.";
+          if (interaction.deferred && !interaction.replied) {
+            await interaction.editReply({ content: errorMessage }).catch(() => {});
+          } else if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({ content: errorMessage, ephemeral: true }).catch(() => {});
+          }
         }
-
-        const embed = new EmbedBuilder()
-          .setTitle("Upcoming birthdays")
-          .setColor(0x23272a)
-          .setDescription(lines.join("\n"));
-        await interaction.reply({ embeds: [embed], ephemeral: false });
       },
     },
   ];

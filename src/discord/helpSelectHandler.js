@@ -61,9 +61,10 @@ export function createHelpSelectHandler({ branding, discord }) {
         const embed = await buildBirthdaysHelpEmbed({
           getCommandMention,
           thumbnail: botImage,
+          tagline: branding.tagline,
         });
 
-        await interaction.reply({ embeds: [embed], ephemeral: false });
+        await interaction.reply({ embeds: [embed] });
         return true;
       }
 

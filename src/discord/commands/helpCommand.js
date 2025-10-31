@@ -44,6 +44,7 @@ export function createHelpCommand({ branding, discord }) {
         return buildBirthdaysHelpEmbed({
           getCommandMention,
           thumbnail: botImage,
+          tagline: branding.tagline,
         });
       }
 
@@ -51,7 +52,7 @@ export function createHelpCommand({ branding, discord }) {
       if (providedPlugin) {
         const pluginEmbed = await buildPluginEmbed(providedPlugin);
         if (pluginEmbed) {
-          await interaction.reply({ embeds: [pluginEmbed], ephemeral: false });
+          await interaction.reply({ embeds: [pluginEmbed] });
           return;
         }
         await interaction.reply({
@@ -77,30 +78,28 @@ export function createHelpCommand({ branding, discord }) {
               inline: true,
             };
           })
-        )
-        .setFooter({ text: "Select the plugin for which you need help" });
+        );
 
       if (branding.tagline) {
         embed.setDescription(branding.tagline);
       }
 
       const selectMenu = new StringSelectMenuBuilder()
-        .setCustomId("help_root")
-        .setPlaceholder("Select the plugin for which you need help")
-        .addOptions([
-          {
-            label: "plugin_name",
-            description: "Open plugin list",
-            value: "plugin_name",
-          },
-        ]);
+        .setCustomId("plugin_select")
+        .setPlaceholder("Select a plugin")
+        .addOptions(
+          pluginChoices.map((plugin) => ({
+            label: plugin.name,
+            description: `Bantuan untuk /help ${plugin.value}`,
+            value: plugin.value,
+          }))
+        );
 
       const components = [new ActionRowBuilder().addComponents(selectMenu)];
 
       await interaction.reply({
         embeds: [embed],
         components,
-        ephemeral: false,
       });
     },
   };

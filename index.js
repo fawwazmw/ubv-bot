@@ -4,6 +4,7 @@ import { Client, GatewayIntentBits, REST, Routes, MessageFlags } from "discord.j
 import { config } from "./src/config/env.js";
 import { buildCommandRegistry } from "./src/discord/commandRegistry.js";
 import { createHelpSelectHandler } from "./src/discord/helpSelectHandler.js";
+import { initBirthdayScheduler } from "./src/features/birthdays/birthdayScheduler.js";
 
 // Health check server for deployment platforms (Render, Railway, etc)
 const PORT = process.env.PORT || 3000;
@@ -12,7 +13,11 @@ app.get("/", (req, res) => res.send("UBV Bot is running!"));
 app.get("/health", (req, res) => res.json({ status: "ok", uptime: process.uptime() }));
 app.listen(PORT, () => console.log(`🌐 Health check server running on port ${PORT}`));
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({ 
+  intents: [
+    GatewayIntentBits.Guilds,
+  ] 
+});
 
 const { commands, registry } = buildCommandRegistry({
   config,
@@ -42,7 +47,7 @@ client.once("clientReady", async () => {
   client.user.setPresence({
     activities: [
       {
-        name: config.branding.tagline || "Universitas Brawijaya Voice",
+        name: "/help",
         type: 2, // Listening
       },
     ],
@@ -51,38 +56,54 @@ client.once("clientReady", async () => {
 
   try {
     await registerSlashCommands();
+    initBirthdayScheduler(client, config);
   } catch (error) {
     console.error("❌ Gagal mendaftarkan slash commands:", error?.message ?? error);
   }
 });
 
 client.on("interactionCreate", async (interaction) => {
-  if (interaction.isChatInputCommand()) {
-    const command = registry.get(interaction.commandName);
-    if (!command) return;
-
-    try {
-      await command.execute(interaction);
-    } catch (error) {
-      console.error(
-        `❌ Command ${interaction.commandName} failed:`,
-        error?.message ?? error
-      );
-      if (interaction.deferred || interaction.replied) {
-        await interaction.editReply({ content: "Terjadi kesalahan tak terduga." });
-      } else {
-        await interaction.reply({
-          content: "Terjadi kesalahan tak terduga.",
-          flags: [MessageFlags.Ephemeral],
-        });
+  try {
+    if (interaction.isChatInputCommand()) {
+      const command = registry.get(interaction.commandName);
+      if (!command) {
+        console.log(`❌ Unknown command: ${interaction.commandName}`);
+        return;
       }
-    }
-    return;
-  }
 
-  if (interaction.isStringSelectMenu()) {
-    const handled = await handleHelpSelect(interaction);
-    if (handled) return;
+      console.log(`📝 Command received: ${interaction.commandName} from ${interaction.user.tag}`);
+
+      try {
+        await command.execute(interaction);
+        console.log(`✅ Command completed: ${interaction.commandName}`);
+      } catch (error) {
+        console.error(
+          `❌ Command ${interaction.commandName} failed:`,
+          error?.stack || error?.message || error
+        );
+        
+        try {
+          if (interaction.deferred) {
+            await interaction.editReply({ content: "Terjadi kesalahan tak terduga." });
+          } else if (!interaction.replied) {
+            await interaction.reply({
+              content: "Terjadi kesalahan tak terduga.",
+              ephemeral: true,
+            });
+          }
+        } catch (replyError) {
+          console.error("Failed to send error message:", replyError.message);
+        }
+      }
+      return;
+    }
+
+    if (interaction.isStringSelectMenu()) {
+      const handled = await handleHelpSelect(interaction);
+      if (handled) return;
+    }
+  } catch (error) {
+    console.error("❌ Interaction handler error:", error?.stack || error?.message || error);
   }
 });
 

@@ -1,5 +1,6 @@
 import { createHelpCommand } from "./commands/helpCommand.js";
 import { createBirthdayCommands } from "../features/birthdays/birthdayCommands.js";
+import { createBirthdayAdminCommands } from "../features/birthdays/birthdayAdminCommands.js";
 
 export function buildCommandRegistry({ config }) {
   const commands = [
@@ -11,6 +12,9 @@ export function buildCommandRegistry({ config }) {
       filePath: config.paths.birthdays,
       branding: config.branding,
       discord: config.discord,
+    }),
+    ...createBirthdayAdminCommands({
+      config,
     }),
   ];
 
