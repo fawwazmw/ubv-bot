@@ -5,18 +5,25 @@ import { config } from "./src/config/env.js";
 import { buildCommandRegistry } from "./src/discord/commandRegistry.js";
 import { createHelpSelectHandler } from "./src/discord/helpSelectHandler.js";
 import { initBirthdayScheduler } from "./src/features/birthdays/birthdayScheduler.js";
+import { displayBanner, logSuccess, logError, logInfo } from "./src/utils/banner.js";
+import { handleXPGain } from "./src/features/levels/xpTracker.js";
+
+// Display beautiful startup banner
+displayBanner();
 
 // Health check server for deployment platforms (Render, Railway, etc)
 const PORT = process.env.PORT || 3000;
 const app = express();
 app.get("/", (req, res) => res.send("UBV Bot is running!"));
 app.get("/health", (req, res) => res.json({ status: "ok", uptime: process.uptime() }));
-app.listen(PORT, () => console.log(`🌐 Health check server running on port ${PORT}`));
+app.listen(PORT, () => logInfo(`Health check server running on port ${PORT}`));
 
-const client = new Client({ 
+const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-  ] 
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ]
 });
 
 const { commands, registry } = buildCommandRegistry({
@@ -34,7 +41,7 @@ async function registerSlashCommands() {
     ),
     { body: definitions }
   );
-  console.log("✅ Slash command terdaftar.");
+  logSuccess("Slash commands registered successfully");
 }
 
 const handleHelpSelect = createHelpSelectHandler({
@@ -43,7 +50,7 @@ const handleHelpSelect = createHelpSelectHandler({
 });
 
 client.once("clientReady", async () => {
-  console.log(`🤖 Logged in sebagai ${client.user.tag}`);
+  logSuccess(`Logged in as ${client.user.tag}`);
   client.user.setPresence({
     activities: [
       {
@@ -57,8 +64,10 @@ client.once("clientReady", async () => {
   try {
     await registerSlashCommands();
     initBirthdayScheduler(client, config);
+    logInfo("Birthday scheduler initialized");
+    logSuccess("Bot is ready to serve!");
   } catch (error) {
-    console.error("❌ Gagal mendaftarkan slash commands:", error?.message ?? error);
+    logError(`Failed to register slash commands: ${error?.message ?? error}`);
   }
 });
 
@@ -67,19 +76,18 @@ client.on("interactionCreate", async (interaction) => {
     if (interaction.isChatInputCommand()) {
       const command = registry.get(interaction.commandName);
       if (!command) {
-        console.log(`❌ Unknown command: ${interaction.commandName}`);
+        logError(`Unknown command: ${interaction.commandName}`);
         return;
       }
 
-      console.log(`📝 Command received: ${interaction.commandName} from ${interaction.user.tag}`);
+      logInfo(`Command: ${interaction.commandName} | User: ${interaction.user.tag}`);
 
       try {
         await command.execute(interaction);
-        console.log(`✅ Command completed: ${interaction.commandName}`);
+        logSuccess(`Command completed: ${interaction.commandName}`);
       } catch (error) {
-        console.error(
-          `❌ Command ${interaction.commandName} failed:`,
-          error?.stack || error?.message || error
+        logError(
+          `Command ${interaction.commandName} failed: ${error?.stack || error?.message || error}`
         );
         
         try {
@@ -92,7 +100,7 @@ client.on("interactionCreate", async (interaction) => {
             });
           }
         } catch (replyError) {
-          console.error("Failed to send error message:", replyError.message);
+          logError(`Failed to send error message: ${replyError.message}`);
         }
       }
       return;
@@ -103,7 +111,16 @@ client.on("interactionCreate", async (interaction) => {
       if (handled) return;
     }
   } catch (error) {
-    console.error("❌ Interaction handler error:", error?.stack || error?.message || error);
+    logError(`Interaction handler error: ${error?.stack || error?.message || error}`);
+  }
+});
+
+// Message event for XP tracking
+client.on("messageCreate", async (message) => {
+  try {
+    await handleXPGain(message);
+  } catch (error) {
+    logError(`XP tracking error: ${error.message}`);
   }
 });
 

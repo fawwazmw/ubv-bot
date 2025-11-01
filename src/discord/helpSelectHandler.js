@@ -1,7 +1,7 @@
 import { ActionRowBuilder, StringSelectMenuBuilder } from "discord.js";
 import { pluginChoices } from "./helpContent.js";
 import { createMentionFetcher } from "./commandMentions.js";
-import { buildBirthdaysHelpEmbed } from "./helpEmbeds.js";
+import { buildBirthdaysHelpEmbed, buildLevelsHelpEmbed } from "./helpEmbeds.js";
 
 export function createHelpSelectHandler({ branding, discord }) {
   return async function handleHelpSelect(interaction) {
@@ -35,6 +35,8 @@ export function createHelpSelectHandler({ branding, discord }) {
 
     if (interaction.customId === "plugin_select") {
       const selected = interaction.values?.[0];
+      console.log(`[DEBUG] Plugin selected: ${selected}`);
+
       if (!selected) {
         await interaction.reply({
           content: "Plugin tidak dikenal.",
@@ -43,31 +45,47 @@ export function createHelpSelectHandler({ branding, discord }) {
         return true;
       }
 
-      if (selected === "birthdays") {
-        const getCommandMention = createMentionFetcher(
-          interaction,
-          discord.guildId
-        );
-        const botImage =
-          (interaction.client?.user?.displayAvatarURL
-            ? interaction.client.user.displayAvatarURL({
-                extension: "png",
-                size: 1024,
-              })
-            : null) ||
-          branding.imageUrl ||
-          "https://cdn.discordapp.com/embed/avatars/0.png";
+      // Common setup for help embeds
+      const getCommandMention = createMentionFetcher(
+        interaction,
+        discord.guildId
+      );
+      const botImage =
+        (interaction.client?.user?.displayAvatarURL
+          ? interaction.client.user.displayAvatarURL({
+              extension: "png",
+              size: 1024,
+            })
+          : null) ||
+        branding.imageUrl ||
+        "https://cdn.discordapp.com/embed/avatars/0.png";
 
+      if (selected === "birthdays") {
+        console.log('[DEBUG] Building birthdays help embed');
         const embed = await buildBirthdaysHelpEmbed({
           getCommandMention,
           thumbnail: botImage,
           tagline: branding.tagline,
         });
 
-        await interaction.reply({ embeds: [embed] });
+        await interaction.update({ embeds: [embed], components: [] });
         return true;
       }
 
+      if (selected === "levels") {
+        console.log('[DEBUG] Building levels help embed');
+        const embed = await buildLevelsHelpEmbed({
+          getCommandMention,
+          thumbnail: botImage,
+          tagline: branding.tagline,
+        });
+
+        console.log('[DEBUG] Updating interaction with levels embed');
+        await interaction.update({ embeds: [embed], components: [] });
+        return true;
+      }
+
+      console.log(`[DEBUG] No handler for ${selected}, sending default reply`);
       await interaction.reply({
         content: `/help ${selected}`,
         ephemeral: true,

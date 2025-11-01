@@ -44,3 +44,68 @@ export async function buildBirthdaysHelpEmbed({
 
   return embed;
 }
+
+export async function buildLevelsHelpEmbed({
+  getCommandMention,
+  thumbnail,
+  tagline,
+}) {
+  const commands = [
+    { name: "rank", hint: "Check your current level, XP, and rank position", extra: "(optional @user)" },
+    { name: "leaderboard", hint: "View the top ranked members in the server", extra: "(optional page)" },
+  ];
+
+  const embed = new EmbedBuilder()
+    .setTitle("⭐ Levels & Ranking System")
+    .setColor(0x5865F2)
+    .setFooter({ text: "UBV Bot • Levels commands" });
+
+  const descriptionParts = [
+    "**📊 How it works:**",
+    "• Earn **15-25 XP** for each message you send",
+    "• **1 minute cooldown** between XP gains (anti-spam)",
+    "• Level up automatically when you reach enough XP",
+    "• Compete with other members on the leaderboard!",
+    "",
+    "**📈 Level Formula:**",
+    "`Level = floor(0.1 × √XP)`",
+    "",
+    "**🎯 Level Requirements:**",
+    "• Level 1: 100 XP",
+    "• Level 5: 2,500 XP",
+    "• Level 10: 10,000 XP",
+    "• Level 20: 40,000 XP",
+  ];
+
+  if (tagline) {
+    descriptionParts.unshift(`*${tagline}*`, "");
+  }
+
+  embed.setDescription(descriptionParts.join("\n"));
+
+  if (thumbnail) {
+    embed.setThumbnail(thumbnail);
+  }
+
+  // Add a blank field for spacing
+  embed.addFields({ name: "\u200B", value: "**📋 Available Commands:**", inline: false });
+
+  for (const cmd of commands) {
+    const mention = await getCommandMention(cmd.name);
+    const extra = cmd.extra ? ` \`${cmd.extra}\`` : "";
+    embed.addFields({
+      name: `${mention}${extra}`,
+      value: cmd.hint,
+      inline: false,
+    });
+  }
+
+  // Add tips section
+  embed.addFields({
+    name: "💡 Tips",
+    value: "• Stay active in chat to gain more XP\n• Check `/rank` to see your progress\n• Compete for the top spot on `/leaderboard`\n• Level up notifications appear automatically!",
+    inline: false,
+  });
+
+  return embed;
+}

@@ -5,7 +5,7 @@ import {
 } from "discord.js";
 import { createMentionFetcher } from "../commandMentions.js";
 import { pluginChoices, pluginHelpEntries } from "../helpContent.js";
-import { buildBirthdaysHelpEmbed } from "../helpEmbeds.js";
+import { buildBirthdaysHelpEmbed, buildLevelsHelpEmbed } from "../helpEmbeds.js";
 
 export function createHelpCommand({ branding, discord }) {
   return {
@@ -40,12 +40,23 @@ export function createHelpCommand({ branding, discord }) {
       );
 
       async function buildPluginEmbed(key) {
-        if (key !== "birthdays") return null;
-        return buildBirthdaysHelpEmbed({
-          getCommandMention,
-          thumbnail: botImage,
-          tagline: branding.tagline,
-        });
+        if (key === "birthdays") {
+          return buildBirthdaysHelpEmbed({
+            getCommandMention,
+            thumbnail: botImage,
+            tagline: branding.tagline,
+          });
+        }
+
+        if (key === "levels") {
+          return buildLevelsHelpEmbed({
+            getCommandMention,
+            thumbnail: botImage,
+            tagline: branding.tagline,
+          });
+        }
+
+        return null;
       }
 
       const providedPlugin = interaction.options?.getString?.("plugin_name");

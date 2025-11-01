@@ -12,6 +12,7 @@ export const pluginChoices = [
 
 export const pluginHelpEntries = [
   { name: "Birthdays", value: "/help birthdays" },
+  { name: "Levels", value: "/help levels" },
   { name: "Commands", value: "/help commands" },
   { name: "Ticketing", value: "/help ticketing" },
   { name: "Invite Tracker", value: "/help invite_tracker" },
