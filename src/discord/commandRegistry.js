@@ -2,6 +2,8 @@ import { createHelpCommand } from "./commands/helpCommand.js";
 import { createBirthdayCommands } from "../features/birthdays/birthdayCommands.js";
 import { createBirthdayAdminCommands } from "../features/birthdays/birthdayAdminCommands.js";
 import { createLevelCommands } from "../features/levels/levelCommands.js";
+import { createTicketCommands } from "../features/tickets/ticketCommands.js";
+import { createTicketAdminCommands } from "../features/tickets/ticketAdminCommands.js";
 
 export function buildCommandRegistry({ config }) {
   const commands = [
@@ -19,6 +21,13 @@ export function buildCommandRegistry({ config }) {
     }),
     ...createLevelCommands({
       branding: config.branding,
+    }),
+    ...createTicketCommands({
+      branding: config.branding,
+    }),
+    ...createTicketAdminCommands({
+      branding: config.branding,
+      config,
     }),
   ];
 

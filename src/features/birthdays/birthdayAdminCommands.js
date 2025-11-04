@@ -7,6 +7,7 @@ export function createBirthdayAdminCommands({ config }) {
       definition: {
         name: "check-birthdays",
         description: "Manually trigger birthday check (Admin only)",
+        default_member_permissions: PermissionsBitField.Flags.ManageGuild.toString(),
       },
       async execute(interaction) {
         const hasPermissions =
@@ -59,6 +60,7 @@ export function createBirthdayAdminCommands({ config }) {
       definition: {
         name: "birthday-config",
         description: "Show current birthday system configuration (Admin only)",
+        default_member_permissions: PermissionsBitField.Flags.ManageGuild.toString(),
       },
       async execute(interaction) {
         const hasPermissions =

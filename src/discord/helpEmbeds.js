@@ -109,3 +109,85 @@ export async function buildLevelsHelpEmbed({
 
   return embed;
 }
+
+export async function buildTicketingHelpEmbed({
+  getCommandMention,
+  thumbnail,
+  tagline,
+}) {
+  const userCommands = [
+    { name: "ticket-info", hint: "View information about current ticket" },
+  ];
+
+  const staffCommands = [
+    { name: "ticket-claim", hint: "Claim the current ticket (Staff only)" },
+    { name: "ticket-add", hint: "Add user to current ticket (Staff only)", extra: "[@user]" },
+    { name: "ticket-remove", hint: "Remove user from current ticket (Staff only)", extra: "[@user]" },
+  ];
+
+  const embed = new EmbedBuilder()
+    .setTitle("🎫 Ticketing System")
+    .setColor(0x5865F2)
+    .setFooter({ text: "UBV Bot • Ticketing commands" });
+
+  const descriptionParts = [
+    "**📋 How it works:**",
+    "• Click a category button on the ticket panel to create a ticket",
+    "• A private channel will be created just for you and staff",
+    "• Chat with staff to get help or submit requests",
+    "• Click 'Tutup Ticket' when you're done",
+    "",
+    "**🎨 Ticket Categories:**",
+    "• 🛠️ **Bantuan** - Get technical help and support",
+    "• 📢 **Laporan** - Report issues or violations",
+    "• 💡 **Saran** - Submit suggestions or ideas",
+    "",
+    "**⚠️ Rules:**",
+    "• You can only have 1 active ticket at a time",
+    "• Be patient, staff will respond as soon as possible",
+    "• All messages are logged for transcript",
+  ];
+
+  if (tagline) {
+    descriptionParts.unshift(`*${tagline}*`, "");
+  }
+
+  embed.setDescription(descriptionParts.join("\n"));
+
+  if (thumbnail) {
+    embed.setThumbnail(thumbnail);
+  }
+
+  // User Commands
+  embed.addFields({ name: "\u200B", value: "**👤 User Commands:**", inline: false });
+  for (const cmd of userCommands) {
+    const mention = await getCommandMention(cmd.name);
+    const extra = cmd.extra ? ` \`${cmd.extra}\`` : "";
+    embed.addFields({
+      name: `${mention}${extra}`,
+      value: cmd.hint,
+      inline: false,
+    });
+  }
+
+  // Staff Commands
+  embed.addFields({ name: "\u200B", value: "**👨‍💼 Staff Commands:**", inline: false });
+  for (const cmd of staffCommands) {
+    const mention = await getCommandMention(cmd.name);
+    const extra = cmd.extra ? ` \`${cmd.extra}\`` : "";
+    embed.addFields({
+      name: `${mention}${extra}`,
+      value: cmd.hint,
+      inline: false,
+    });
+  }
+
+  // Tips section
+  embed.addFields({
+    name: "💡 Tips",
+    value: "• Click the appropriate category button based on your need\n• Only one ticket can be open at a time\n• Be clear and detailed when explaining your issue\n• Staff will respond as soon as possible\n• Click 'Tutup Ticket' when your issue is resolved",
+    inline: false,
+  });
+
+  return embed;
+}

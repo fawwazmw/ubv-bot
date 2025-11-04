@@ -7,6 +7,8 @@ import { createHelpSelectHandler } from "./src/discord/helpSelectHandler.js";
 import { initBirthdayScheduler } from "./src/features/birthdays/birthdayScheduler.js";
 import { displayBanner, logSuccess, logError, logInfo } from "./src/utils/banner.js";
 import { handleXPGain } from "./src/features/levels/xpTracker.js";
+import { handleTicketButton } from "./src/features/tickets/ticketButtonHandler.js";
+import "./src/database/ticketStore.js"; // Initialize ticket schema
 
 // Display beautiful startup banner
 displayBanner();
@@ -89,7 +91,7 @@ client.on("interactionCreate", async (interaction) => {
         logError(
           `Command ${interaction.commandName} failed: ${error?.stack || error?.message || error}`
         );
-        
+
         try {
           if (interaction.deferred) {
             await interaction.editReply({ content: "Terjadi kesalahan tak terduga." });
@@ -104,6 +106,14 @@ client.on("interactionCreate", async (interaction) => {
         }
       }
       return;
+    }
+
+    if (interaction.isButton()) {
+      const handled = await handleTicketButton(interaction);
+      if (handled) {
+        logInfo(`Button: ${interaction.customId} | User: ${interaction.user.tag}`);
+        return;
+      }
     }
 
     if (interaction.isStringSelectMenu()) {

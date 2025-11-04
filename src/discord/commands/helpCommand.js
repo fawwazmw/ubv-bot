@@ -5,7 +5,11 @@ import {
 } from "discord.js";
 import { createMentionFetcher } from "../commandMentions.js";
 import { pluginChoices, pluginHelpEntries } from "../helpContent.js";
-import { buildBirthdaysHelpEmbed, buildLevelsHelpEmbed } from "../helpEmbeds.js";
+import {
+  buildBirthdaysHelpEmbed,
+  buildLevelsHelpEmbed,
+  buildTicketingHelpEmbed
+} from "../helpEmbeds.js";
 
 export function createHelpCommand({ branding, discord }) {
   return {
@@ -50,6 +54,14 @@ export function createHelpCommand({ branding, discord }) {
 
         if (key === "levels") {
           return buildLevelsHelpEmbed({
+            getCommandMention,
+            thumbnail: botImage,
+            tagline: branding.tagline,
+          });
+        }
+
+        if (key === "ticketing") {
+          return buildTicketingHelpEmbed({
             getCommandMention,
             thumbnail: botImage,
             tagline: branding.tagline,

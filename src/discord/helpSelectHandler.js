@@ -1,7 +1,11 @@
 import { ActionRowBuilder, StringSelectMenuBuilder } from "discord.js";
 import { pluginChoices } from "./helpContent.js";
 import { createMentionFetcher } from "./commandMentions.js";
-import { buildBirthdaysHelpEmbed, buildLevelsHelpEmbed } from "./helpEmbeds.js";
+import {
+  buildBirthdaysHelpEmbed,
+  buildLevelsHelpEmbed,
+  buildTicketingHelpEmbed
+} from "./helpEmbeds.js";
 
 export function createHelpSelectHandler({ branding, discord }) {
   return async function handleHelpSelect(interaction) {
@@ -81,6 +85,19 @@ export function createHelpSelectHandler({ branding, discord }) {
         });
 
         console.log('[DEBUG] Updating interaction with levels embed');
+        await interaction.update({ embeds: [embed], components: [] });
+        return true;
+      }
+
+      if (selected === "ticketing") {
+        console.log('[DEBUG] Building ticketing help embed');
+        const embed = await buildTicketingHelpEmbed({
+          getCommandMention,
+          thumbnail: botImage,
+          tagline: branding.tagline,
+        });
+
+        console.log('[DEBUG] Updating interaction with ticketing embed');
         await interaction.update({ embeds: [embed], components: [] });
         return true;
       }
